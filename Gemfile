@@ -1,0 +1,17 @@
+source 'https://rubygems.org'
+ruby '3.1.2'
+gem 'sequel_pg', require: false
+gem 'sequel'
+gem 'pg'
+gem 'hashie'
+gem 'pry'
+gem 'pry-rescue'
+gem 'pry-stack_explorer'
+gem 'pry-remote'
+gem 'try_to'
+gem 'config_spartan'
+gem 'faraday'
+gem 'http'
+gem 'nokogiri'
+gem 'open-uri'
+
