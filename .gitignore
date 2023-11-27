@@ -1,6 +1,6 @@
 /log
 /tmp
-/config/*.yml
+/config/settings/*.yml
 
 /vendor
 /coverage

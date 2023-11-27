@@ -1,0 +1,3 @@
+logger:
+    file: 'log/hegesmart.log'
+    level: Logger::DEBUG 

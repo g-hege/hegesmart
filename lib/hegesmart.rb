@@ -15,7 +15,7 @@ module Hegesmart
   begin
     Settings = ConfigSpartan.create do
        file "#{Hegesmart.root}/config/settings.yml"
-#      file "#{EventWebsync.root}/config/settings/#{EventWebsync.env}.yml"
+       file "#{Hegesmart.root}/config/config.yml"
     end
   rescue Errno::ENOENT => e
     $stderr.puts e.message

@@ -1,0 +1,18 @@
+wstw:
+    user: 'xxxxx@xxx.at'
+    pwd:  'XXXXX'
+    apikey: 'afb0be74-6455-44f5-a34d-6994223020ba'
+    startdate: '2022-06-01'
+    
+shelly:
+    user: 'xxxx@xxx.at'
+    pwd:  '111111111111111111111111111111111'
+    device:
+        solar: '99999999999999'
+        boiler: '9999999999999'
+    startdate: '2023-09-01'
+
+database:
+    url: postgres://user:pwd@host/database
+    
+
