@@ -22,6 +22,7 @@ class WstwApi
             "nonce": "",
             "prompt": "login",
         }
+
 		login_uri = URI("#{AUTH_URL}auth?#{URI.encode_www_form(loginargs)}")
 		response =  Net::HTTP.get_response(login_uri)
 		return nil if !response.is_a?(Net::HTTPSuccess)
@@ -106,7 +107,7 @@ class WstwApi
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
 		req =  Net::HTTP::Get.new(uri.request_uri)
-		req['Authorization'] = "Bearer #{WstwApi.wstw_token}"
+		req['Authorization'] = "Bearer #{@wstw_token}"
 		req['Content-type']  = 'application/json'
 		req['Accept']        = 'application/json'
 		req['X-Gateway-APIKey'] = Hegesmart.config.wstw.apikey
