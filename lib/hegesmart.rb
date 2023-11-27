@@ -15,7 +15,7 @@ module Hegesmart
   begin
     Settings = ConfigSpartan.create do
        file "#{Hegesmart.root}/config/settings.yml"
-       file "#{Hegesmart.root}/config/config.yml"
+       file "#{Hegesmart.root}/config/settings/config.yml"
     end
   rescue Errno::ENOENT => e
     $stderr.puts e.message
@@ -33,7 +33,6 @@ module Hegesmart
   def self.db
     Sequel::Model.db
   end
-
 
   def self.config
     Settings
