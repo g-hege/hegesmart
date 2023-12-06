@@ -161,12 +161,12 @@ class WstwApi
 	 	body = WstwApi.get(cmd, query: query, debug: false)
 	 	return if body.nil?
 
-		Consumption.where(device: device).where(Sequel.lit("Date(timestamp) = ?",import_day.strftime('%Y-%m-%d'))).delete
+		Consumption.where(device: device).where(Sequel.lit("Date(timestamp) = ?",import_day.strftime('%Y-%m-%d'))).delete				
 		insertrecs = body['values'].map { |h| { device: device, timestamp: (Time.parse(h['timestamp'])) + 60*60, value: h['value']}}
-		Consumption.multi_insert(insertrecs)
-		total_day = 0
-		body['values'].each{|h| total_day +=  h['value'].round}
-		total_day
+		Consumption.multi_insert(insertrecs) if insertrecs.select{|r| !r[:value].nil?}.count == 24
+		day_total = 0
+		body['values'].each{|h| day_total +=  h['value'].round}
+		day_total
 
 	end
 

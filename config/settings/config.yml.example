@@ -1,18 +1,25 @@
 wstw:
-    user: 'xxxxx@xxx.at'
-    pwd:  'XXXXX'
+    user: 'xxx@gmail.com'
+    pwd:  'xxxx'
     apikey: 'afb0be74-6455-44f5-a34d-6994223020ba'
     startdate: '2022-06-01'
     
 shelly:
-    user: 'xxxx@xxx.at'
-    pwd:  '111111111111111111111111111111111'
+    user: 'xxxxs@gmail.com'
+    pwd:  'xxxxx'
     device:
-        solar: '99999999999999'
-        boiler: '9999999999999'
-    startdate: '2023-09-01'
-
-database:
-    url: postgres://user:pwd@host/database
+        solar: 
+            id: 'xxx'
+            startdate: '2023-08-23'
+        boiler: 
+            id: 'xxxxx'
+            startdate: '2023-09-01'
+        workplace:
+            id: 'xxxxxx'
+            startdate: '2023-12-01'
+        tv:
+            id: 'xxxxxx'
+            startdate: '2023-12-03'
     
-
+database:
+    url: postgres://user:pwd@host/dbname
