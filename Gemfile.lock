@@ -12,9 +12,12 @@ GEM
     colorize (1.1.0)
     config_spartan (1.0.1)
       hashie
+    csv (3.2.8)
     date (3.3.4)
     debug_inspector (1.2.0)
     domain_name (0.6.20231109)
+    drb (2.2.0)
+      ruby2_keywords
     faraday (2.8.1)
       base64
       faraday-net_http (>= 2.0, < 3.1)
@@ -90,6 +93,8 @@ DEPENDENCIES
   benchmark
   colorize
   config_spartan
+  csv
+  drb
   faraday
   hashie
   http
