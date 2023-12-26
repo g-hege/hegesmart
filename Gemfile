@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
-ruby '3.2.2'
+ruby '3.3.0'
 gem 'sequel_pg', require: false
 gem 'sequel'
 gem 'pg'
@@ -18,4 +18,3 @@ gem 'terminal-table'
 gem 'colorize'
 gem 'benchmark'
 gem 'httparty'
-
