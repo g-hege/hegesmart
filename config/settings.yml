@@ -1,3 +1,11 @@
 logger:
     file: 'log/hegesmart.log'
     level: Logger::DEBUG 
+
+
+
+oauth:
+    oob_url: 'urn:ietf:wg:oauth:2.0:oob'
+    credential_path:  'config/settings/credentials.json'
+    sheet_token_path: 'config/settings/sheet_token.yaml'
+    sheet_application_name: 'hegesmart'

@@ -1,5 +1,8 @@
 source 'https://rubygems.org'
 ruby '3.3.0'
+gem 'capistrano'
+gem 'capistrano-rvm'
+gem 'capistrano-bundler'
 gem 'sequel_pg', require: false
 gem 'sequel'
 gem 'pg'
