@@ -1,4 +1,4 @@
 
 
-server "raspi.local", user: "hege", roles: %w[app]
+server "raspi.local", user: "deploy", roles: %w[app]
 
