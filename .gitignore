@@ -1,7 +1,10 @@
 /log
 /tmp
 /config/settings/*.yml
-
+/config/settings/*.yaml
+/config/settings/*.json
+/config/setting.yml
 /vendor
 /coverage
 /logs
+

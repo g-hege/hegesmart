@@ -126,7 +126,7 @@ class WstwApi
 	def self.import
 
 		device = 'wienstrom'
-		date_from =Consumption.where(device: device).max(:timestamp).to_date.next_day rescue Date.parse(Hegesmart.config.wstw.startdate)
+		date_from =Consumption.where(device: device).max(:timestamp).to_date.prev_day rescue Date.parse(Hegesmart.config.wstw.startdate)
 		date_to = Date.today.prev_day
 		for import_day in date_from..date_to do
 			total_day = WstwApi.import_day(import_day)
@@ -140,7 +140,7 @@ class WstwApi
 		unless @wstw_token
 			WstwApi.login
 			return nil if @wstw_token.nil?		
-		end
+		end 
 		if import_day.kind_of? String
 			import_day = Time.parse("#{import_day}")
 		else
@@ -163,7 +163,8 @@ class WstwApi
 
 		Consumption.where(device: device).where(Sequel.lit("Date(timestamp) = ?",import_day.strftime('%Y-%m-%d'))).delete				
 		insertrecs = body['values'].map { |h| { device: device, timestamp: (Time.parse(h['timestamp'])) + 60*60, value: h['value']}}
-		Consumption.multi_insert(insertrecs) if insertrecs.select{|r| !r[:value].nil?}.count == 24
+		insertrecs.delete_if {|h| h[:value].nil?}
+		Consumption.multi_insert(insertrecs) if insertrecs.select{|r| !r[:value].nil?}.count > 22  ## missing 1 hour on dayswitch to summertime
 		day_total = 0
 		body['values'].each{|h| day_total +=  h['value'].round rescue 0}
 		day_total
