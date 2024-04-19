@@ -1,6 +1,6 @@
 #!/bin/bash
-source /home/hege/.rvm/environments/ruby-3.3.0
-cd /var/www/hegesmart
+source ~/.rvm/environments/ruby-3.3.0
+cd ~/git/hegesmart
 export HEGETOOL_ENV=staging 
 exec bundle exec pry -Iconfig -rboot
 
