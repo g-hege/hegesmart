@@ -26,3 +26,5 @@ gem 'benchmark'
 gem 'httparty'
 gem 'drb'
 gem 'csv'
+gem 'mqtt', :github => 'njh/ruby-mqtt'
+
