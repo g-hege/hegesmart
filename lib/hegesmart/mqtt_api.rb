@@ -14,4 +14,14 @@ class Mqtt_api
 		end
  	end
 
+
+ 	def self.marketprice
+ 		price = (Epex.where{timestamp < DateTime.now}.order(Sequel.desc(:timestamp)).get(:marketprice)/10).to_f
+		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
+	  		c.publish('c4/marketprice', { price: price }.to_json  )
+		end
+		puts 'send to mqtt broker'
+		true
+ 	end
+
 end
