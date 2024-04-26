@@ -1,0 +1,18 @@
+[Unit]
+Description=send actual data to mqtt broker
+
+[Service]
+Type=simple
+User=hege
+Group=hege
+Environment=HEGETOOL_ENV=staging 
+WorkingDirectory=/home/hege/git/hegesmart
+ExecStart=/bin/bash /home/hege/git/hegesmart/shared/
+
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+
+
