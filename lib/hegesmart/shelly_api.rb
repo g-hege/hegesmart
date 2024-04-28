@@ -26,7 +26,7 @@ class ShellyApi
 		Hegesmart.config.shelly.device.each do |deviceconfig|
 			device = deviceconfig[0]
 			date_from = Consumption.where(device: device).max(:timestamp).to_date.prev_day rescue Date.parse(Hegesmart.config.shelly.device[device]['startdate'])
-			date_to = Date.today.prev_day
+			date_to = Date.today
 			for import_day in date_from..date_to do
 				total_day = ShellyApi.import_day(device, import_day)
 				puts "import: #{device} #{import_day.strftime('%y-%m-%d')} -> #{total_day} W/h"
