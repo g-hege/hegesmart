@@ -26,11 +26,18 @@ class Mqtt_api
 		total
 	end
 
+	def self.get_current_power_of_device(topic)
+		ret = @cpower[topic] rescue 0
+		ret.nil? ? 0 : ret
+	end
+
 	def self.publish_c4
 
-		# initialize
+		mqtt_log("INITIALZE")
+		Hegesmart.logger.info "INITIALZE"
 		@current_solar_power = 0
 		@actual_runtime_id = nil
+		@current_pool_state = false
 		pool_pump(false, initialize_switch: true)
 
 		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
@@ -55,19 +62,25 @@ class Mqtt_api
 	  					max_price = (minmax[:max]/10).to_f rescue 'na'
 	  					min_price = (minmax[:min]/10).to_f rescue 'na'
 						runtime_today = Hegesmart.db.fetch("select sum(runtime) from device_runtime where device = 'pool_pump' and date(starttimestamp) = CURRENT_DATE").first[:sum] rescue 0
-						ether = Crypto.where(slug: 'ethereum').order(Sequel.desc(:last_updated)).get(:price) rescue 0
-						ether = ether.to_f.round(2)
+
+						bitcoin = Crypto.where(slug: 'bitcoin').order(Sequel.desc(:last_updated)).get(:price) rescue 0
+						bitcoin = bitcoin.to_f.round(2)
+
+						ethereum = Crypto.where(slug: 'ethereum').order(Sequel.desc(:last_updated)).get(:price) rescue 0
+						ethereum = ethereum.to_f.round(2)
 
 						MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 					  		c.publish('c4/marketprice', { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
 					  		c.publish('c4/currentpower', { apower: cp.round(1), consumption: (cp - @current_solar_power).round(1)  }.to_json )
 					  		c.publish('c4/poolpump', { switch: "#{ @current_pool_state ? 'on' : 'off'}", runtime:  (runtime_today.to_f / 60).round(1)}.to_json )
-					  		c.publish('c4/crypto', { ether: ether}.to_json )
+					  		c.publish('crypto/status', { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 						end
 
 						@current_pool_state = m['output'] if topic == 'pool'
 
-						if (@current_solar_power > 300 && cp < 800 ) || (current_price < 5 && @current_solar_power > 50) 
+						cp_without_pool_pump = cp - Mqtt_api.get_current_power_of_device('pool')
+
+						if (@current_solar_power > 300 && cp_without_pool_pump < 800 ) || (current_price < 5 && @current_solar_power > 30) 
 							pool_pump(true)
 						else
 							pool_pump(false)
@@ -93,7 +106,6 @@ class Mqtt_api
 			@suppress_last_switchtime = Time.new
 			MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 	  			c.publish('pool/rpc', {"id": "req", "src": "hegesmart","method": "Switch.set", "params":{"id": 0, "on": on }}.to_json  )
-				c.publish('c4/log', { msg: "#{DateTime.now.strftime('%H:%M')} switch pool pump: #{on ? 'on' : 'off'}"}.to_json )
 			end
 			@current_pool_state = on
 			# new entry in device_runtime
@@ -102,9 +114,20 @@ class Mqtt_api
 			else
 				@actual_runtime_id = nil
 			end
-			Hegesmart.logger.info "switch pool pump: #{on ? 'on' : 'off'}"
+			msg = "switch pool pump: #{on ? 'on' : 'off'}"
+			Hegesmart.logger.info msg
+			mqtt_log(msg)
 		end
 		true
+
  	end
+
+ 	def self.mqtt_log(msg)
+		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
+			c.publish('c4/log', { msg: "#{DateTime.now.strftime('%H:%M')} | #{msg}" }.to_json )
+		end
+	end
+
+
 
 end
