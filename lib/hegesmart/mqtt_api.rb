@@ -33,8 +33,9 @@ class Mqtt_api
 
 	def self.publish_c4
 
-		mqtt_log("INITIALZE")
-		Hegesmart.logger.info "INITIALZE"
+		mqtt_log("INITIALIZE")
+		sleep(2)
+		Hegesmart.logger.info "INITIALIZE"
 		@current_solar_power = 0
 		@actual_runtime_id = nil
 		@current_pool_state = false
@@ -94,14 +95,14 @@ class Mqtt_api
 
 	def self.pool_pump(on = true, initialize_switch: false)
 
-		@current_pool_state = false if @current_pool_state.nil?
+		@current_pool_state = false if @current_pool_state.nil? || initialize_switch
 		@suppress_last_switchtime = ((Time.new) - 60*2 )if @suppress_last_switchtime.nil?
 
 		DeviceRuntime.where(id: @actual_runtime_id ).update({stoptimestamp: DateTime.now}) if on == true && !@actual_runtime_id.nil?
 
-		Hegesmart.logger.info "@suppress_last_switchtime: #{Time.new - @suppress_last_switchtime} | #{@actual_runtime_id}"
+		Hegesmart.logger.info "@suppress_last_switchtime: #{(Time.new - @suppress_last_switchtime).to_i} secounds | #{@actual_runtime_id}"
 
-		# mminimum 90 seconds between 2 switch events
+		# minimum 90 seconds between 2 switch events
 		if (on != @current_pool_state && (Time.new - @suppress_last_switchtime) > 90) || initialize_switch
 			@suppress_last_switchtime = Time.new
 			MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
