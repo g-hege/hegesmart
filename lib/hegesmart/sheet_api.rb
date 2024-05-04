@@ -4,6 +4,7 @@ class SheetApi
 		[	
 			{sheet_title: 'energy 30 days', 			sql_view: 'EnergyLast30Days'},
 			{sheet_title: 'spotty 30 days', 			sql_view: 'EnergySpottyLast30Days'},
+			{sheet_title: 'monthly spotty', 			sql_view: 'EnergyMonthlySpotty'},
 			{sheet_title: 'monthly consumption', 	sql_view: 'EnergyMonthlyStatistik'},
 			{sheet_title: 'yearly consumption', 	sql_view: 'EnergyYearlyStatistik'}
 		]
