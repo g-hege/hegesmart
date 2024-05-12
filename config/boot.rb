@@ -13,6 +13,8 @@ require 'net/http'
 require 'http-cookie'
 require 'googleauth'
 require 'googleauth/stores/file_token_store'
+require 'sys-uptime'
+include Sys
 
     # google sheet service
     OOB_URI = Hegesmart.config.oauth.oob_url.freeze

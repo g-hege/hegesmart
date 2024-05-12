@@ -42,9 +42,6 @@ module Hegesmart
     credentials
   end
 
-
-
-
   def self.init
     Sequel::Model.db = Sequel.connect(Settings.database.url)
     Sequel::Model.db.extension :pg_array
