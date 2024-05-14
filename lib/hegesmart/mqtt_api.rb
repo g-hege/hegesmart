@@ -2,16 +2,18 @@ class Mqtt_api
 
 	def self.devices
 		[
-			{topic: 'boiler',	 			param: 'apower'},
-			{topic: 'workplace', 			param: 'apower'},
-			{topic: 'tv', 					param: 'apower'},
-			{topic: 'washing-machine', 		param: 'apower'},
- 			{topic: 'refrigerator-outside', param: 'apower'},
-			{topic: 'kitchen', 				param: 'apower'},
-			{topic: 'dryer', 				param: 'apower'},
-			{topic: 'pool', 				param: 'apower'},
-			{topic: 'plug',	 				param: 'apower'},	
-			{topic: 'solar', 				param: 'apower'}				
+			{device: 'boiler',              topic: 'boiler/status/switch:0',	            param: 'apower', unit: 'Watt'},
+			{device: 'workplace', 			topic: 'workplace/status/switch:0', 			param: 'apower', unit: 'Watt'},
+			{device: 'tv', 					topic: 'tv/status/switch:0', 					param: 'apower', unit: 'Watt'},
+			{device: 'washing-machine', 	topic: 'washing-machine/status/switch:0', 		param: 'apower', unit: 'Watt'},
+ 			{device: 'refrigerator-outside',topic: 'refrigerator-outside/status/switch:0',  param: 'apower', unit: 'Watt'},
+			{device: 'kitchen', 			topic: 'kitchen/status/switch:0', 				param: 'apower', unit: 'Watt'},
+			{device: 'dryer', 				topic: 'dryer/status/switch:0', 				param: 'apower', unit: 'Watt'},
+			{device: 'pool', 				topic: 'pool/status/switch:0', 				    param: 'apower', unit: 'Watt'},
+			{device: 'plug',	 			topic: 'plug/status/switch:0',	 				param: 'apower', unit: 'Watt'},	
+			{device: 'solar', 				topic: 'solar/status/switch:0', 				param: 'apower', unit: 'Watt'},
+			{device: 'switch0', 			topic: 'I4/status/input:0',		 				param: 'state',  unit: 'on/off'},
+			{device: 'switch1', 			topic: 'I4/status/input:1',		 				param: 'state',  unit: 'on/off'}
 		]
 	end
 
@@ -25,33 +27,45 @@ class Mqtt_api
 		@current_solar_power = 0
 		@actual_runtime_id = nil
 		@current_pool_state = false
+		@current_pool_apower = false
+		@pool_override_switch = false
 		pool_pump(false, initialize_switch: true)
 
 		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 	  		c.get('#') do |topic, message|
-
-	  			t = Mqtt_api.devices.find{|d| (topic.start_with? d[:topic]) && topic.include?('status') }
-
-	  			next if t.nil?
+	  			actual_dev = Mqtt_api.devices.find{|d| topic == d[:topic]}
+	  			next if actual_dev.nil?
   				m = JSON.parse(message)
-  				topic = topic.split('/').first
-  				next if m[t[:param]].nil?
+  				topic = actual_dev[:device]
+  				next if m[actual_dev[:param]].nil?
 
-				Hegesmart.logger.info "device: #{topic}: #{m[t[:param]].round(1)} Watt" 
+				Hegesmart.logger.info "device: #{topic}: #{m[actual_dev[:param]]} #{actual_dev[:unit]}" 
 
-				if topic == 'solar'
-					@current_solar_power = m['apower']
-				elsif topic == 'pool'
-					# dont count pool energie double!
+				case topic
+				when 'solar'
+					@current_solar_power = m[actual_dev[:param]]
+				when 'pool'
+					@current_pool_apower = m[actual_dev[:param]] > 300 ? true : false
+				when 'switch0' # pool pump permanent on
+					@pool_override_switch = true if m[actual_dev[:param]]
+					@time_last_switch = ((Time.new) - 60*2 )
+					Hegesmart.logger.info "pool_override_switch TRUE" if @pool_override_switch
+				when 'switch1' # pool pump permanent off
+					@pool_override_switch = false if m[actual_dev[:param]] 
+					@time_last_switch = ((Time.new) - 60*2 )
+					Hegesmart.logger.info "pool_override_switch FALSE" if !@pool_override_switch
 				else
-					current_power(topic, m[t[:param]])
+					current_power(topic, m[actual_dev[:param]])
 				end
+
 				current_price = (Epex.where{timestamp < DateTime.now}.order(Sequel.desc(:timestamp)).get(:marketprice)/10).to_f
 				minmax =  Hegesmart.db.fetch('select min(marketprice) as min, max(marketprice) as max from epex e where date(timestamp) = CURRENT_DATE').first
 				max_price = (minmax[:max]/10).to_f rescue 'na'
 				min_price = (minmax[:min]/10).to_f rescue 'na'
 
 				runtime_today = Hegesmart.db.fetch("select sum(runtime) from device_runtime where device = 'pool_pump' and date(starttimestamp) = CURRENT_DATE").first[:sum] rescue 0
+
+				solar_power_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'solar' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
 
 				bitcoin = Crypto.where(slug: 'bitcoin').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				bitcoin = bitcoin.to_f.round(2)
@@ -62,15 +76,21 @@ class Mqtt_api
 				ethereum = Crypto.where(slug: 'ethereum').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				ethereum = ethereum.to_f.round(2)
 
+
 				MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
-			  		c.publish('c4/marketprice', { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
-			  		c.publish('c4/currentpower', { apower: current_power().round(1), consumption: (current_power() - @current_solar_power).round(1)  }.to_json )
-			  		c.publish('c4/poolpump', { 	switch: "#{ @current_pool_state ? 'on' : 'off'}", 
+			  		c.publish('c4/marketprice',  { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
+			  		c.publish('c4/currentpower', { apower: current_power().round(1), 
+			  			                           consumption: (current_power() - @current_solar_power).round(1),
+			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1)
+			  			                         }.to_json )
+			  		c.publish('c4/poolpump', { 	switch: "#{ @current_pool_state ? 'on' : 'off'}",
+			  								    power:  "#{ @current_pool_apower ? 'on' : 'off'}", 
+			  								    override: "#{@pool_override_switch ? 'on' : 'off'}",
 							  					runtime:  (runtime_today.to_f / 60).round(1),
 							  					runtime_id: @actual_runtime_id.nil? ? 'null' :  @actual_runtime_id,
 							  					boiler: is_boiler_on() ? 'on' : 'off',
 							  					time_last_switch: (Time.new - @time_last_switch).to_i
-			  		}.to_json )
+			  		                         }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )			  		
 			  		c.publish('crypto/status', { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 			  		c.publish('grogu/status', { uptime: Uptime.uptime }.to_json  )
@@ -90,9 +110,11 @@ class Mqtt_api
 
 				cp_without_pool_pump = current_power() - Mqtt_api.get_current_power_of_device('pool')
 
-# if boiler on, don't run the pool pump !
+# if boiler on, don't run the pool pump ! 
+# maximal 6 hours per day
+				pump_runok = ((runtime_today.to_f / 60) < 6) && !is_boiler_on()
 
-				if (@current_solar_power > 333 && !is_boiler_on() ) || (current_price < 5 && @current_solar_power > 30 && !is_boiler_on() ) 
+				if (@current_solar_power > 333 && pump_runok ) || (current_price < 5 && @current_solar_power > 30 && pump_runok ) ||  @pool_override_switch
 					pool_pump(true)
 				else
 					pool_pump(false)

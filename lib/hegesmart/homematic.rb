@@ -1,31 +1,5 @@
 class Homematic
 
-	def self.hmdevices
-		[{id: '3014F711A00000D8A9A9E8F6' },
-		 {id: '3014F711A00000DA4994C726' },
-		 {id: '3014F711A00000DA499F082E' },
-		 {id: '3014F711A00001DD89971945' },
-		 {id: '3014F711A00000DA499F082E' },
- 		 {id: '3014F711A00003D8A9A9F8AB' },
- 		 {id: '3014F711A0000A18A9A658CA' },
- 		 {id: '3014F711A0000A18A9AA275E' },
- 		 {id: '3014F711A0000A18A9AA2760' },
- 		 {id: '3014F711A0000A18A9AA2771' },
- 		 {id: '3014F711A0000A18A9AA2773' },
- 		 {id: '3014F711A0000A1D89983300' },
- 		 {id: '3014F711A0000A1D899834EC' },
- 		 {id: '3014F711A0000A9A499957DB' },
- 		 {id: '3014F711A0000B5D898B2D5C' },
- 		 {id: '3014F711A0000B9BE99E94D8' },
- 		 {id: '3014F711A0000B9BE99E9792' },
- 		 {id: '3014F711A0000B9D898A4BFA' }, 
- 		 {id: '3014F711A0000EDBE9923FE3' }, 
- 		 {id: '3014F711A0000EDBE992486B' },  
- 		 {id: '3014F711A000109D8991B5F4' }, 
- 		 {id: '3014F711A000281D89B3C44A' }
-		]
-	end
-
 	def self.device_recordings
 		[
 		 {device: 'temp-pool', id: '3014F711A000281D89B3C44A', value: "['functionalChannels']['1']['temperatureExternalOne']"},
@@ -52,14 +26,14 @@ class Homematic
 
 	def self.show_labels
 		hm_json = Homematic.get_homematic_data()
-		Homematic.hmdevices.each do |dev|
-			puts "#{dev}: #{hm_json['devices'][dev[:id]]['label']}"
+		hm_json['devices'].each do |dev|
+			puts "#{dev[0]}: #{hm_json['devices'][dev[0]]['label']}"
 		end;
 	end
 
 	def self.get_homematic_data
 		hm_ret =''
-		IO.popen('cd /home/hege/.venv/bin; ./hmip_cli  --dump-configuration') do |io|
+		IO.popen('cd /home/hege/.venv/bin; ./hmip_cli --dump-configuration') do |io|
 		  hm_ret =  io.read
 		end;
 
