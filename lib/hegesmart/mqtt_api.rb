@@ -39,7 +39,7 @@ class Mqtt_api
   				topic = actual_dev[:device]
   				next if m[actual_dev[:param]].nil?
 
-				Hegesmart.logger.info "device: #{topic}: #{m[actual_dev[:param]]} #{actual_dev[:unit]}" 
+#				Hegesmart.logger.info "device: #{topic}: #{m[actual_dev[:param]]} #{actual_dev[:unit]}" 
 
 				case topic
 				when 'solar'
@@ -110,11 +110,15 @@ class Mqtt_api
 
 				cp_without_pool_pump = current_power() - Mqtt_api.get_current_power_of_device('pool')
 
-# if boiler on, don't run the pool pump ! 
-# maximal 6 hours per day
+# if boiler is on, don't run the pool pump ! 
+# running time maximal 6 hours per day
+
 				pump_runok = ((runtime_today.to_f / 60) < 6) && !is_boiler_on()
 
-				if (@current_solar_power > 333 && pump_runok ) || (current_price < 5 && @current_solar_power > 30 && pump_runok ) ||  @pool_override_switch
+				if (@current_solar_power > 333 && pump_runok ) || 
+				   (current_price < 6 && @current_solar_power > 30 && pump_runok ) ||  
+				   @pool_override_switch
+				   
 					pool_pump(true)
 				else
 					pool_pump(false)

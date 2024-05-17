@@ -15,7 +15,15 @@ class Crypto_api
 		response = http.request(req)
 
 		if response.is_a?(Net::HTTPUnauthorized)
-			Hegesmart.logger.error "Crypto_api HTTPUnauthorized!"
+			msg = "Crypto_api HTTPUnauthorized!"
+			Hegesmart.logger.error msg
+			puts msg
+		end
+
+		if response.is_a?(Net::HTTPTooManyRequests)
+			msg = "Crypto_api Too Many Requests!"
+			Hegesmart.logger.error msg
+			puts msg
 		end
 
 		return nil if !response.is_a?(Net::HTTPSuccess)
