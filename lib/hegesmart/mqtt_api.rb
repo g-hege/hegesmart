@@ -13,7 +13,9 @@ class Mqtt_api
 			{device: 'plug',	 			topic: 'plug/status/switch:0',	 				param: 'apower', unit: 'Watt'},	
 			{device: 'solar', 				topic: 'solar/status/switch:0', 				param: 'apower', unit: 'Watt'},
 			{device: 'switch0', 			topic: 'I4/status/input:0',		 				param: 'state',  unit: 'on/off'},
-			{device: 'switch1', 			topic: 'I4/status/input:1',		 				param: 'state',  unit: 'on/off'}
+			{device: 'switch1', 			topic: 'I4/status/input:1',		 				param: 'state',  unit: 'on/off'},
+			{device: 'min-solar-power', 	topic: 'c4set/min-solar-power',		 			param: 'power',  unit: 'Watt'},
+			{device: 'max-market-price',	topic: 'c4set/max-market-price',	 			param: 'cent',   unit: 'Cent'}
 		]
 	end
 
@@ -29,6 +31,8 @@ class Mqtt_api
 		@current_pool_state = false
 		@current_pool_apower = false
 		@pool_override_switch = false
+		@min_solar_power = 100 # initial 100 watt
+		@max_market_price = 6  # initial 6 cent
 		pool_pump(false, initialize_switch: true)
 
 		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
@@ -54,6 +58,12 @@ class Mqtt_api
 					@pool_override_switch = false if m[actual_dev[:param]] 
 					@time_last_switch = ((Time.new) - 60*2 )
 					Hegesmart.logger.info "pool_override_switch FALSE" if !@pool_override_switch
+				when 'min-solar-power'
+					@min_solar_power = m[actual_dev[:param]].to_i
+					mqtt_log("set min solar power: #{@min_solar_power} #{m[actual_dev[:unit]]}")
+				when 'max-market-price'
+					@max_market_price = m[actual_dev[:param]].to_i
+					mqtt_log("set max price: #{@max_market_price} #{m[actual_dev[:unit]]}")					
 				else
 					current_power(topic, m[actual_dev[:param]])
 				end
@@ -89,7 +99,9 @@ class Mqtt_api
 							  					runtime:  (runtime_today.to_f / 60).round(1),
 							  					runtime_id: @actual_runtime_id.nil? ? 'null' :  @actual_runtime_id,
 							  					boiler: is_boiler_on() ? 'on' : 'off',
-							  					time_last_switch: (Time.new - @time_last_switch).to_i
+							  					time_last_switch: (Time.new - @time_last_switch).to_i,
+							  					minsolar: "#{@min_solar_power}",
+							  					maxprice: "#{@max_market_price}"
 			  		                         }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )			  		
 			  		c.publish('crypto/status', { ethereum: ethereum, bitcoin: bitcoin }.to_json )
@@ -115,10 +127,10 @@ class Mqtt_api
 
 				pump_runok = ((runtime_today.to_f / 60) < 6) && !is_boiler_on()
 
-				if (@current_solar_power > 333 && pump_runok ) || 
-				   (current_price < 6 && @current_solar_power > 30 && pump_runok ) ||  
+				if (@current_solar_power > @min_solar_power && pump_runok ) || 
+				   (current_price < @max_market_price && @current_solar_power > 20 && pump_runok ) ||  
 				   @pool_override_switch
-				   
+
 					pool_pump(true)
 				else
 					pool_pump(false)
