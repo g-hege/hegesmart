@@ -31,8 +31,8 @@ class Mqtt_api
 		@current_pool_state = false
 		@current_pool_apower = false
 		@pool_override_switch = false
-		@min_solar_power = 100 # initial 100 watt
-		@max_market_price = 6  # initial 6 cent
+		@min_solar_power = ConfigDb.get('min_solar_power','100').to_i  # initial 100 watt
+		@max_market_price = ConfigDb.get('max_market_price','6').to_i  # initial 6 cent
 		pool_pump(false, initialize_switch: true)
 
 		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
@@ -60,9 +60,11 @@ class Mqtt_api
 					Hegesmart.logger.info "pool_override_switch FALSE" if !@pool_override_switch
 				when 'min-solar-power'
 					@min_solar_power = m[actual_dev[:param]].to_i
+					ConfigDb.set('min_solar_power', @min_solar_power.to_s)
 					mqtt_log("set min solar power: #{@min_solar_power} #{m[actual_dev[:unit]]}")
 				when 'max-market-price'
 					@max_market_price = m[actual_dev[:param]].to_i
+					ConfigDb.set('max_market_price', @max_market_price.to_s)
 					mqtt_log("set max price: #{@max_market_price} #{m[actual_dev[:unit]]}")					
 				else
 					current_power(topic, m[actual_dev[:param]])
@@ -86,26 +88,25 @@ class Mqtt_api
 				ethereum = Crypto.where(slug: 'ethereum').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				ethereum = ethereum.to_f.round(2)
 
-
 				MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
-			  		c.publish('c4/marketprice',  { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
-			  		c.publish('c4/currentpower', { apower: current_power().round(1), 
+			  		c.publish('c4/marketprice', { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
+			  		c.publish('c4/currentpower',{ apower: current_power().round(1), 
 			  			                           consumption: (current_power() - @current_solar_power).round(1),
 			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1)
-			  			                         }.to_json )
-			  		c.publish('c4/poolpump', { 	switch: "#{ @current_pool_state ? 'on' : 'off'}",
-			  								    power:  "#{ @current_pool_apower ? 'on' : 'off'}", 
-			  								    override: "#{@pool_override_switch ? 'on' : 'off'}",
-							  					runtime:  (runtime_today.to_f / 60).round(1),
-							  					runtime_id: @actual_runtime_id.nil? ? 'null' :  @actual_runtime_id,
-							  					boiler: is_boiler_on() ? 'on' : 'off',
-							  					time_last_switch: (Time.new - @time_last_switch).to_i,
-							  					minsolar: "#{@min_solar_power}",
-							  					maxprice: "#{@max_market_price}"
-			  		                         }.to_json )
+			  			                        }.to_json )
+				  	c.publish('c4/poolpump', 	{ 	switch: "#{ @current_pool_state ? 'on' : 'off'}",
+				  								    power:  "#{ @current_pool_apower ? 'on' : 'off'}", 
+				  								    override: "#{@pool_override_switch ? 'on' : 'off'}",
+								  					runtime:  (runtime_today.to_f / 60).round(1),
+								  					runtime_id: @actual_runtime_id.nil? ? 'null' :  @actual_runtime_id,
+								  					boiler: is_boiler_on() ? 'on' : 'off',
+								  					time_last_switch: (Time.new - @time_last_switch).to_i,
+								  					minsolar: "#{@min_solar_power}",
+								  					maxprice: "#{@max_market_price}"
+				  		                        }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )			  		
-			  		c.publish('crypto/status', { ethereum: ethereum, bitcoin: bitcoin }.to_json )
-			  		c.publish('grogu/status', { uptime: Uptime.uptime }.to_json  )
+			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
+			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
 				end
 
 				@current_pool_state = m['output'] if topic == 'pool'
