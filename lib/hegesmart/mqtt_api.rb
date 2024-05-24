@@ -77,13 +77,20 @@ class Mqtt_api
 				end
 
 				current_price = (Epex.where{timestamp < DateTime.now}.order(Sequel.desc(:timestamp)).get(:marketprice)/10).to_f
-				minmax =  Hegesmart.db.fetch('select min(marketprice) as min, max(marketprice) as max from epex e where date(timestamp) = CURRENT_DATE').first
+
+				price_running_hours = Epex.where(Sequel.lit("timestamp::date = current_date and marketprice < ?",@max_market_price * 10)).count
+
+				minmax =  Hegesmart.db.fetch('select min(marketprice) as min, max(marketprice) as max, avg(marketprice) as avg from epex e where date(timestamp) = CURRENT_DATE').first
 				max_price = (minmax[:max]/10).to_f rescue 'na'
 				min_price = (minmax[:min]/10).to_f rescue 'na'
+				avg_price = (minmax[:avg]/10).to_f rescue 'na'
 
 				runtime_today = Hegesmart.db.fetch("select sum(runtime) from device_runtime where device = 'pool_pump' and date(starttimestamp) = CURRENT_DATE").first[:sum] rescue 0
 
 				solar_power_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'solar' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
+
+				solar_week_data = {}
+				Solarweek.each {|w| solar_week_data["d#{(1 + solar_week_data.count )}".to_sym] = w.solarenergie.to_f/1000}
 
 				bitcoin = Crypto.where(slug: 'bitcoin').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				bitcoin = bitcoin.to_f.round(2)
@@ -95,7 +102,12 @@ class Mqtt_api
 				ethereum = ethereum.to_f.round(2)
 
 				MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
-			  		c.publish('c4/marketprice', { price: current_price, max_price: max_price, min_price: min_price }.to_json  )
+			  		c.publish('c4/marketprice', {  price: current_price.round(2), 
+			  			                           max_price: max_price.round(2), 
+			  			                           min_price: min_price.round(2),
+			  			                           avg_price: avg_price.round(2),
+			  			                           running_hours: price_running_hours
+			  			                        }.to_json  )
 			  		c.publish('c4/currentpower',{ apower: current_power().round(1), 
 			  			                           consumption: (current_power() - @current_solar_power).round(1),
 			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1)
@@ -111,7 +123,8 @@ class Mqtt_api
 								  					maxprice: "#{@max_market_price}",
 								  					daily_runtime: "#{(@daily_pump_runtime.to_f).round(1)}"
 				  		                        }.to_json )
-			  		c.publish('homematic/status', hm_data.to_json )			  		
+			  		c.publish('c4/solarweek', solar_week_data.to_json )
+			  		c.publish('homematic/status', hm_data.to_json )
 			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
 				end
