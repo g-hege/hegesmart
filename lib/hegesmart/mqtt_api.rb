@@ -80,10 +80,10 @@ class Mqtt_api
 
 				price_running_hours = Epex.where(Sequel.lit("timestamp::date = current_date and marketprice < ?",@max_market_price * 10)).count
 
-				minmax =  Hegesmart.db.fetch('select min(marketprice) as min, max(marketprice) as max, avg(marketprice) as avg from epex e where date(timestamp) = CURRENT_DATE').first
-				max_price = (minmax[:max]/10).to_f rescue 'na'
-				min_price = (minmax[:min]/10).to_f rescue 'na'
-				avg_price = (minmax[:avg]/10).to_f rescue 'na'
+				min_max_avg =  Hegesmart.db.fetch('select min(marketprice) as min, max(marketprice) as max, avg(marketprice) as avg from epex e where date(timestamp) = CURRENT_DATE').first
+				max_price = (min_max_avg[:max]/10).to_f rescue 'na'
+				min_price = (min_max_avg[:min]/10).to_f rescue 'na'
+				avg_price = (min_max_avg[:avg]/10).to_f rescue 'na'
 
 				runtime_today = Hegesmart.db.fetch("select sum(runtime) from device_runtime where device = 'pool_pump' and date(starttimestamp) = CURRENT_DATE").first[:sum] rescue 0
 
@@ -91,6 +91,9 @@ class Mqtt_api
 
 				solar_week_data = {}
 				Solarweek.each {|w| solar_week_data["d#{(1 + solar_week_data.count )}".to_sym] = w.solarenergie.to_f/1000}
+
+				solar_forecast_today = SolarForecastDay.where(day: Date.today).get(:pv_estimate10).to_f rescue 0
+				solar_forecast_tomorrow = SolarForecastDay.where(day: (Date.today + 1)).get(:pv_estimate10).to_f rescue 0
 
 				bitcoin = Crypto.where(slug: 'bitcoin').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				bitcoin = bitcoin.to_f.round(2)
@@ -124,6 +127,7 @@ class Mqtt_api
 								  					daily_runtime: "#{(@daily_pump_runtime.to_f).round(1)}"
 				  		                        }.to_json )
 			  		c.publish('c4/solarweek', solar_week_data.to_json )
+			  		c.publish('c4/solarforecast', {today: solar_forecast_today.round(2), tomorrow: solar_forecast_tomorrow.round(2) }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )
 			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
@@ -149,7 +153,7 @@ class Mqtt_api
 				pump_runok = ((runtime_today.to_f / 60) < @daily_pump_runtime) && !is_boiler_on()
 
 				if (@current_solar_power > @min_solar_power && pump_runok ) || 
-				   (current_price < @max_market_price && @current_solar_power > 20 && pump_runok ) ||  
+				   (current_price < @max_market_price && @current_solar_power > 10 && pump_runok ) ||  
 				   @pool_override_switch
 
 					pool_pump(true)
