@@ -1,5 +1,5 @@
 class SolarForecast
-
+# https://toolkit.solcast.com.au/home-pv-system/6f2d-1745-f605-e260/detail
   def self.update 
     puts "#{DateTime.now.strftime('%Y-%m-%d %M:%H')} SolarForecast update"
     uri = URI(Hegesmart.config.solcast.uri)

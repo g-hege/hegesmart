@@ -160,6 +160,7 @@ class Mqtt_api
 				else
 					pool_pump(false)
 				end
+	  			@max_market_price = ConfigDb.get('max_market_price','6').to_i  # initial 6 cent
 	  		end
 	  	end
 
@@ -210,6 +211,21 @@ class Mqtt_api
 		MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 			c.publish('c4/log', { msg: "#{DateTime.now.strftime('%H:%M')} | #{msg}" }.to_json )
 		end
+	end
+
+
+	def self.auto_adjust_max_market_price
+		price_running_hours = 0
+		for market_price in 1..10 do 
+			running_hours = Epex.where(Sequel.lit("timestamp::date = current_date and marketprice < ?",market_price * 10)).count
+			if running_hours > 3
+				Mqtt_api.mqtt_log "set max market price: #{market_price} Cent -> #{running_hours} hours"
+				price_running_hours = market_price
+				break
+			end
+		end
+		ConfigDb.set('max_market_price', price_running_hours.to_s)
+		true
 	end
 
 end
