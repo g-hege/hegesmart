@@ -16,7 +16,6 @@ class SolarForecast
 
     SolarForecast.unrestrict_primary_key
     body['forecasts'].each do |f|
-      next if Date.parse(f['period_end']) > (Date.today + 1)
       SolarForecast.update_or_create({period_end: Time.parse(f['period_end']) + 60*60*2 }, {pv_estimate: f['pv_estimate'] / 10, pv_estimate10: f['pv_estimate10']/10, pv_estimate90: f['pv_estimate90']/10})
     end;
     true
