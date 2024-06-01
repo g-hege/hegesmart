@@ -32,6 +32,7 @@ class Mqtt_api
 		@current_pool_state = false
 		@current_pool_pump_state = false
 		@pool_override_switch = false
+		@sunrise_sunset = {}
 		@min_solar_power = ConfigDb.get('min_solar_power','100').to_i  # initial 100 watt
 		@max_market_price = ConfigDb.get('max_market_price','6').to_i  # initial 6 cent
 		@daily_pump_runtime = ConfigDb.get('daily_pump_runtime','6').to_f  # initial 6 hours
@@ -104,6 +105,15 @@ class Mqtt_api
 				ethereum = Crypto.where(slug: 'ethereum').order(Sequel.desc(:last_updated)).get(:price) rescue 0
 				ethereum = ethereum.to_f.round(2)
 
+				if @sunrise_sunset[:date].nil? || @sunrise_sunset['date'] != DateTime.now.strftime('%Y-%m-%d')
+					response = HTTParty.get(Hegesmart.config.sunrise_sunset_uri)
+					@sunrise_sunset = response["results"]
+					@sunrise_sunset['date'] = DateTime.now.strftime('%Y-%m-%d')
+					%w{sunrise sunset solar_noon civil_twilight_begin civil_twilight_end nautical_twilight_begin nautical_twilight_end astronomical_twilight_begin astronomical_twilight_end}.each do |p|
+						@sunrise_sunset[p] = Time.parse(@sunrise_sunset[p]).strftime('%H:%M')
+					end
+				end
+
 				MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 			  		c.publish('c4/marketprice', {  price: current_price.round(2), 
 			  			                           max_price: max_price.round(2), 
@@ -130,7 +140,9 @@ class Mqtt_api
 			  		c.publish('c4/solarforecast', {today: solar_forecast_today.round(2), tomorrow: solar_forecast_tomorrow.round(2) }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )
 			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
+			  		c.publish('sun/status',     @sunrise_sunset.to_json  )
 			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
+
 				end
 
 				@current_pool_state = m['output'] if topic == 'pool'
