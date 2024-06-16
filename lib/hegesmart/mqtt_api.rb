@@ -77,6 +77,31 @@ class Mqtt_api
 					current_power(topic, m[actual_dev[:param]])
 				end
 
+				w = Weather.order(Sequel.desc(:timestamp)).first
+				weather = {description: w.description,
+							icon: "https://openweathermap.org/img/wn/#{w.icon}@2x.png",
+							clouds: w.clouds,
+							temp: w.temp.to_f,
+							temp_min: w.temp_min.to_f,
+							temp_max: w.temp_max.to_f,
+							pressure: w.pressure,
+							humidity: w.humidity,
+							feels_like: w.feels_like.to_f,
+							wind_speed: w.wind_speed.to_f,
+							wind_deg: w.wind_deg
+						}
+
+				forecast = Hegesmart.db.fetch('select timestamp::date, min(temp), max(temp), max(wind_speed) as maxwind from public.weather_forecast group by timestamp::date order by timestamp')
+
+				forecast_arr = []
+				forecast.each do |fc|
+					d = (fc[:timestamp] -  DateTime.now.to_date).to_i
+					if d > 0 && d < 5
+						forecast_arr << "#{fc[:timestamp].abbr_dayname} | min: #{'%.1f' % fc[:min].to_f} | max: #{'%.1f' % fc[:max].to_f} | wind: #{'%.1f' % fc[:maxwind].to_f} km/h"
+					end
+				end
+
+
 				current_price = (Epex.where{timestamp < DateTime.now}.order(Sequel.desc(:timestamp)).get(:marketprice)/10).to_f
 
 				price_running_hours = Epex.where(Sequel.lit("timestamp::date = current_date and marketprice < ?",@max_market_price * 10)).count
@@ -87,6 +112,12 @@ class Mqtt_api
 				avg_price = (min_max_avg[:avg]/10).to_f rescue 'na'
 
 				runtime_today = Hegesmart.db.fetch("select sum(runtime) from device_runtime where device = 'pool_pump' and date(starttimestamp) = CURRENT_DATE").first[:sum] rescue 0
+
+				usage_day1 = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'wienstrom' and date(timestamp) = CURRENT_DATE - 1").first[:sum] rescue 0
+				usage_day2 = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'wienstrom' and date(timestamp) = CURRENT_DATE - 2").first[:sum] rescue 0
+				usage_day3 = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'wienstrom' and date(timestamp) = CURRENT_DATE - 3").first[:sum] rescue 0
+
+				usage_pump_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'pool' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
 
 				solar_power_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'solar' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
 
@@ -123,7 +154,8 @@ class Mqtt_api
 			  			                        }.to_json  )
 			  		c.publish('c4/currentpower',{ apower: current_power().round(1), 
 			  			                           consumption: (current_power() - @current_solar_power).round(1),
-			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1)
+			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1),
+			  			                           usage_pump_this_day: (usage_pump_this_day.to_f / 1000).round(1)
 			  			                        }.to_json )
 				  	c.publish('c4/poolpump', 	{ 	switch: "#{ @current_pool_state ? 'on' : 'off'}",
 				  								    power:  "#{ @current_pool_pump_state ? 'on' : 'off'}", 
@@ -136,12 +168,27 @@ class Mqtt_api
 								  					maxprice: "#{@max_market_price}",
 								  					daily_runtime: "#{(@daily_pump_runtime.to_f).round(1)}"
 				  		                        }.to_json )
+				  	c.publish('c4/usage', {  day1: (usage_day1.to_f / 1000).round(2), 
+				  							 day2: (usage_day2.to_f / 1000).round(2),
+				  		                     day3: (usage_day3.to_f / 1000).round(2)
+				  		                  }.to_json )				  		                     
 			  		c.publish('c4/solarweek', solar_week_data.to_json )
 			  		c.publish('c4/solarforecast', {today: solar_forecast_today.round(2), tomorrow: solar_forecast_tomorrow.round(2) }.to_json )
 			  		c.publish('homematic/status', hm_data.to_json )
 			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 			  		c.publish('sun/status',     @sunrise_sunset.to_json  )
 			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
+
+					minute_now = DateTime.now.minute
+			  		@prev_minute_now = minute_now - 1 if @prev_minute_now.nil?
+			  		if @prev_minute_now != minute_now
+			  			c.publish('weather', weather.to_json)
+			  			@prev_minute_now = minute_now
+						forecast_arr.reverse.each do |f|
+			  				c.publish('forcast',{log: f}.to_json)
+			  				sleep(0.5)
+				  		end
+			  		end
 
 				end
 
@@ -240,4 +287,14 @@ class Mqtt_api
 		true
 	end
 
+end
+
+class Date
+  def dayname
+     DAYNAMES[self.wday]
+  end
+
+  def abbr_dayname
+    ABBR_DAYNAMES[self.wday]
+  end
 end
