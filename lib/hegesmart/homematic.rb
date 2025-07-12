@@ -2,7 +2,7 @@ class Homematic
 
 	def self.device_recordings
 		[
-		 {device: 'temp-pool', id: '3014F711A000281D89B3C44A', value: "['functionalChannels']['1']['temperatureExternalOne']"},
+		 {device: 'temp-pool', id: '3014F711A0002822699B81FA', value: "['functionalChannels']['1']['temperatureExternalOne']"},
 		 {device: 'temp-garden', id: '3014F711A0000EDBE9923FE3', value: "['functionalChannels']['1']['actualTemperature']"},
 		 {device: 'humidity-garden', id: '3014F711A0000EDBE9923FE3', value: "['functionalChannels']['1']['humidity']"},
 		 {device: 'temp-loggia', id: '3014F711A0000EDBE992486B', value: "['functionalChannels']['1']['actualTemperature']"},
@@ -11,6 +11,7 @@ class Homematic
 		 {device: 'humidity-wz', id: '3014F711A0000A9A499957DB', value: "['functionalChannels']['1']['humidity']"},
 		]
 	end
+
 
 	def self.import_actual_homematic
 		puts DateTime.now.strftime('%Y-%m-%d %H:%M')

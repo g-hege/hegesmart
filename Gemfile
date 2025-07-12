@@ -28,4 +28,6 @@ gem 'drb'
 gem 'csv'
 gem 'mqtt', :github => 'njh/ruby-mqtt'
 gem 'sys-uptime'
+gem 'awesome_print'
+
 

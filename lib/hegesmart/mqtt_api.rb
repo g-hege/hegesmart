@@ -120,6 +120,7 @@ class Mqtt_api
 				usage_pump_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'pool' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
 
 				solar_power_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'solar' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
+				energy_this_day = Hegesmart.db.fetch("select sum(value) from consumption c  where device = 'energy' and date(timestamp) = CURRENT_DATE").first[:sum] rescue 0
 
 				solar_week_data = {}
 				Solarweek.each {|w| solar_week_data["d#{(1 + solar_week_data.count )}".to_sym] = w.solarenergie.to_f/1000}
@@ -152,7 +153,8 @@ class Mqtt_api
 			  			                           avg_price: avg_price.round(2),
 			  			                           running_hours: price_running_hours
 			  			                        }.to_json  )
-			  		c.publish('c4/currentpower',{ apower: current_power().round(1), 
+			  		c.publish('c4/currentpower',{ energy_this_day: (energy_this_day.to_f / 1000).round(1),
+			  																	apower: current_power().round(1), 
 			  			                           consumption: (current_power() - @current_solar_power).round(1),
 			  			                           solar_power_this_day: (solar_power_this_day.to_f / 1000).round(1),
 			  			                           usage_pump_this_day: (usage_pump_this_day.to_f / 1000).round(1)

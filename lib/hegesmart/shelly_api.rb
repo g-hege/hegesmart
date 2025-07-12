@@ -56,7 +56,11 @@ class ShellyApi
 			'date_from': import_from.strftime("%Y-%m-%d %H:%M"),
 			'date_to': import_to.strftime("%Y-%m-%d %H:%M")
 		}
-		uri =  URI.parse("#{ShellyApi.shelly_uri}/v2/statistics/power-consumption?#{URI.encode_www_form(param)}")
+		if Hegesmart.config.shelly.device[device]['type'] == 'em-3p'
+			uri =  URI.parse("#{ShellyApi.shelly_uri}/v2/statistics/power-consumption/em-3p?#{URI.encode_www_form(param)}")
+		else # pm1-plus
+			uri =  URI.parse("#{ShellyApi.shelly_uri}/v2/statistics/power-consumption?#{URI.encode_www_form(param)}")
+		end
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
 		req =  Net::HTTP::Get.new(uri.request_uri)
@@ -67,12 +71,47 @@ class ShellyApi
 		return nil if !response.is_a?(Net::HTTPSuccess)
 		body = JSON.load(response.body)
 		Consumption.where(device: device).where(Sequel.lit("Date(timestamp) = ?",import_from.strftime('%Y-%m-%d'))).delete
-		body['history'].delete_if{|h| !h['missing'].nil?}
-		insertrecs = body['history'].map { |h| { device: device, timestamp: Time.parse(h['datetime']), value: h['consumption'].round}}
-		Consumption.multi_insert(insertrecs)
 		total_day = 0
-		body['history'].each{|h| total_day +=  h['consumption'].round}
+		if Hegesmart.config.shelly.device[device]['type'] == 'em-3p'
+			body['sum'].delete_if{|h| !h['missing'].nil?}
+			insertrecs = body['sum'].map { |h| { device: device, timestamp: Time.parse(h['datetime']), value: h['consumption'].round, reversed: h['reversed'].round}}
+			body['sum'].each{|h| total_day +=  h['consumption'].round}
+		else
+			body['history'].delete_if{|h| !h['missing'].nil?}
+			insertrecs = body['history'].map { |h| { device: device, timestamp: Time.parse(h['datetime']), value: h['consumption'].round}}
+			body['history'].each{|h| total_day +=  h['consumption'].round}
+		end
+		Consumption.multi_insert(insertrecs)
 		total_day
 	end
 
+
+	def self.update_market_price
+
+		uri = URI("https://shelly-77-eu.shelly.cloud/v2/user/pp-ltu/eyJpZCI6MTg1MjA1NCwic24iOjY1MzMyNTY4MzV9.pPdns2GuPCtNJKH9S2vcK5AjnEdsU6d1LdVgd99VH_A")
+		http = Net::HTTP.new(uri.host, uri.port)
+		http.use_ssl = true
+		request = Net::HTTP::Post.new(uri.path, { 'Content-Type' => 'application/json' })
+		data = {price: ((Epex.where{timestamp < DateTime.now}.order(Sequel.desc(:timestamp)).get(:marketprice)/10)/100).to_f.to_s}
+		request.body = data.to_json
+		response = http.request(request)
+		if response.is_a?(Net::HTTPSuccess)
+			puts "ok"
+		elsif response.is_a?(Net::HTTPClientError)
+		  # Client-Fehler (4xx Statuscode)
+		  puts "Client-Fehler aufgetreten: #{response.code} #{response.message}"
+		  puts "Antwort-Body: #{response.body}"
+		elsif response.is_a?(Net::HTTPServerError)
+		  # Server-Fehler (5xx Statuscode)
+		  puts "Server-Fehler aufgetreten: #{response.code} #{response.message}"
+		  puts "Antwort-Body: #{response.body}"
+		else
+		  # Andere Fehler oder Weiterleitungen (z.B. 3xx)
+		  puts "Unerwarteter Statuscode: #{response.code} #{response.message}"
+		  puts "Antwort-Body: #{response.body}"
+		end
+		
+	end
+
 end
+
