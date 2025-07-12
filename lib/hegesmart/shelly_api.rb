@@ -88,7 +88,7 @@ class ShellyApi
 
 	def self.update_market_price
 
-		uri = URI("https://shelly-77-eu.shelly.cloud/v2/user/pp-ltu/eyJpZCI6MTg1MjA1NCwic24iOjY1MzMyNTY4MzV9.pPdns2GuPCtNJKH9S2vcK5AjnEdsU6d1LdVgd99VH_A")
+		uri = URI("https://shelly-77-eu.shelly.cloud/v2/user/pp-ltu/#{Hegesmart.config.shelly.live_tarif_token}")
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
 		request = Net::HTTP::Post.new(uri.path, { 'Content-Type' => 'application/json' })
