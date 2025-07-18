@@ -146,6 +146,23 @@ class Mqtt_api
 					end
 				end
 
+# import shelly addone temperature
+
+			uri = URI.parse("http://192.168.0.15/rpc/Temperature.GetStatus?id=100");
+			http = Net::HTTP.new(uri.host, uri.port)
+			http.use_ssl = uri.scheme == 'https'
+			req =  Net::HTTP::Get.new(uri.request_uri);
+			req['Accept']        = 'application/json'
+			response = http.request(req)
+
+			if response.is_a?(Net::HTTPSuccess)
+				body = JSON.load(response.body)
+				pooltemp = body['tC'].to_f.round(2)
+			else
+				pooltemp = '0'
+			end
+
+
 				MQTT::Client.connect(Hegesmart.config.mqtts) do |c|
 			  		c.publish('c4/marketprice', {  price: current_price.round(2), 
 			  			                           max_price: max_price.round(2), 
@@ -180,6 +197,8 @@ class Mqtt_api
 			  		c.publish('crypto/status',  { ethereum: ethereum, bitcoin: bitcoin }.to_json )
 			  		c.publish('sun/status',     @sunrise_sunset.to_json  )
 			  		c.publish('grogu/status',   { uptime: Uptime.uptime }.to_json  )
+			  		c.publish('c4/addon', {pool_temp: pooltemp}.to_json  )
+
 
 					minute_now = DateTime.now.minute
 			  		@prev_minute_now = minute_now - 1 if @prev_minute_now.nil?

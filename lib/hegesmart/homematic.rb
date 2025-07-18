@@ -2,7 +2,6 @@ class Homematic
 
 	def self.device_recordings
 		[
-		 {device: 'temp-pool', id: '3014F711A0002822699B81FA', value: "['functionalChannels']['1']['temperatureExternalOne']"},
 		 {device: 'temp-garden', id: '3014F711A0000EDBE9923FE3', value: "['functionalChannels']['1']['actualTemperature']"},
 		 {device: 'humidity-garden', id: '3014F711A0000EDBE9923FE3', value: "['functionalChannels']['1']['humidity']"},
 		 {device: 'temp-loggia', id: '3014F711A0000EDBE992486B', value: "['functionalChannels']['1']['actualTemperature']"},

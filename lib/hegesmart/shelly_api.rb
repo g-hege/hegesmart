@@ -96,7 +96,7 @@ class ShellyApi
 		request.body = data.to_json
 		response = http.request(request)
 		if response.is_a?(Net::HTTPSuccess)
-			puts "ok"
+			puts "#{DateTime.now.strftime('%Y-%m-%d %H:%M')}: set current price to #{data[:price].to_f.to_s}€"
 		elsif response.is_a?(Net::HTTPClientError)
 		  # Client-Fehler (4xx Statuscode)
 		  puts "Client-Fehler aufgetreten: #{response.code} #{response.message}"
